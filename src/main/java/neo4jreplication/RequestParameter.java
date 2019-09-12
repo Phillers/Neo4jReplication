@@ -1,10 +1,15 @@
 package neo4jreplication;
 
-public class RequestParameter {
+import java.io.Serializable;
+
+public class RequestParameter implements Serializable {
     public int[] write = {};
     public int[] read = {};
-    public Level level = Level.Default;
-
+    public int level = 0;
+    public static final int RYW = 1;
+    public static final int MW = 2;
+    public static final int MR = 4;
+    public static final int WFR = 8;
     public String query;
 
     public RequestParameter(String s) {
@@ -12,7 +17,7 @@ public class RequestParameter {
 
     }
 
-    public RequestParameter(String s, Level level, RequestResult res) {
+    public RequestParameter(String s, int level, RequestResult res) {
         query = s;
         write = res.write.clone();
         read = res.read.clone();

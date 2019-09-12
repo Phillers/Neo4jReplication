@@ -1,9 +1,13 @@
 package neo4jreplication;
 
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Neo4jReplication {
+public class Neo4jReplication implements Neo4jReplicationStub {
     private final String SEPARATOR = ";_;";
     private final char GET_WRITES = 'G';
     private DatabaseDriver driver;
@@ -22,44 +26,81 @@ public class Neo4jReplication {
         this.id = id;
     }
 
+    public static void main(String[] args) {
+        try {
+            //if (System.getSecurityManager() == null) {
+            //    System.setSecurityManager(new SecurityManager());
+           // }
+            String name = "Neo4jReplication";
+            String[] addresses = {"tcp://localhost:1234", "tcp://localhost:4321"};
+            Neo4jReplication engine = new Neo4jReplication("bolt://localhost:7687", "neo4j", "qwazerty2", addresses, 0);
+            Neo4jReplicationStub stub =
+                    (Neo4jReplicationStub) UnicastRemoteObject.exportObject(engine, 0);
+            Registry registry;
+            try {registry = LocateRegistry.createRegistry(12345);}
+            catch (RemoteException e){
+                registry = LocateRegistry.getRegistry();
+            }
+            registry.rebind(name, stub);
+            System.out.println("ComputeEngine bound");
+        } catch (Exception e) {
+            System.err.println("ComputeEngine exception:");
+            e.printStackTrace();
+        }
+    }
+
     public RequestResult read(RequestParameter param) {
-        //TODO
-
-        checkWrites(param, false);
-        return new RequestResult(driver.read(param.query), param.write, writes);
-    }
-
-    public RequestResult write(RequestParameter param) {
-        //TODO
-
-        checkWrites(param, true);
-        writes[id]++;
-        operations.add(param.query);
-        return new RequestResult(driver.write(param.query), writes, param.read);
-    }
-
-    private void checkWrites(RequestParameter param, boolean isWrite) {
-
         int[] check = {};
-        if ((param.level == RequestParameter.Level.MonotonicReads && !isWrite) ||
-                (param.level == RequestParameter.Level.WritesFollowReads && isWrite)) {
+        int level = param.level & (param.RYW|param.MR);
+        if (level == param.MR){
             check = param.read;
         }
-        if ((param.level == RequestParameter.Level.ReadYourWrites && !isWrite) ||
-                (param.level == RequestParameter.Level.MonotonicWrites && isWrite) ||
-                param.level == RequestParameter.Level.PRAM) {
+        if (level == param.RYW){
             check = param.write;
         }
-
-        if (param.level == RequestParameter.Level.Sequential) {
-            check = param.write;
-            for (int i = 0; i < check.length; i++) {
-                if (param.read[i] > check[i])
+        if (level ==  (param.RYW|param.MR)){
+            check = param.write.clone();
+            for(int i=0;i<check.length;i++){
+                if (param.read[i]>check[i])
                     check[i] = param.read[i];
             }
         }
         getWrites(check);
+        check = writes.clone();
+        for(int i=0;i<check.length;i++){
+            if (param.read[i]>check[i])
+                check[i] = param.read[i];
+        }
+        return new RequestResult(driver.read(param.query), param.write, writes);
     }
+
+    public RequestResult write(RequestParameter param) {
+        int[] check = {};
+        int level = param.level & (param.WFR|param.MW);
+        if (level == param.WFR){
+            check = param.read;
+        }
+        if (level == param.MW){
+            check = param.write;
+        }
+        if (level ==  (param.WFR|param.MW)){
+            check = param.write.clone();
+            for(int i=0;i<check.length;i++){
+                if (param.read[i]>check[i])
+                    check[i] = param.read[i];
+            }
+        }
+        getWrites(check);
+        writes[id]++;
+        operations.add(param.query);
+        check = writes.clone();
+        for(int i=0;i<check.length;i++){
+            if (param.write[i]>check[i])
+                check[i] = param.write[i];
+        }
+        return new RequestResult(driver.write(param.query), check, param.read);
+    }
+
 
     private void getWrites(int[] check) {
         for (int i = 0; i < check.length; i++) {
