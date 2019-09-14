@@ -66,7 +66,8 @@ public class Neo4jReplication implements Neo4jReplicationStub {
             }
         }
         getWrites(check);
-        check = writes.clone();
+
+        if(param.read.length>0)
         for(int i=0;i<check.length;i++){
             if (param.read[i]>check[i])
                 check[i] = param.read[i];
@@ -94,6 +95,7 @@ public class Neo4jReplication implements Neo4jReplicationStub {
         writes[id]++;
         operations.add(param.query);
         check = writes.clone();
+        if(param.write.length>0)
         for(int i=0;i<check.length;i++){
             if (param.write[i]>check[i])
                 check[i] = param.write[i];

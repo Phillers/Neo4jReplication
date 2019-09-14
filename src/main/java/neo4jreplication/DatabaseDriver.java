@@ -1,12 +1,6 @@
 package neo4jreplication;
 
 import org.neo4j.driver.v1.*;
-import org.neo4j.driver.v1.util.Pair;
-
-import java.util.List;
-import java.util.stream.Stream;
-
-import static org.neo4j.driver.v1.Values.parameters;
 
 public class DatabaseDriver implements AutoCloseable {
     private final Driver driver;
@@ -20,27 +14,30 @@ public class DatabaseDriver implements AutoCloseable {
         driver.close();
     }
 
-    public List<Record> read(final String query) {
+    public StatementResult read(final String query) {
         try (Session session = driver.session()) {
-            return session.readTransaction(new TransactionWork<List<Record>>() {
+            StatementResult sr =  session.readTransaction(new TransactionWork<StatementResult>() {
                 @Override
-                public List<Record> execute(Transaction tx) {
+                public StatementResult execute(Transaction tx) {
                     StatementResult result = tx.run(query);
-                    return result.list();
+                    return result;
                 }
             });
+            return sr;
         }
     }
 
-    public List<Record> write(final String query) {
+    public StatementResult write(final String query) {
         try (Session session = driver.session()) {
-            return session.writeTransaction(new TransactionWork<List<Record>>() {
+            StatementResult sr =  session.writeTransaction(new TransactionWork<StatementResult>() {
                 @Override
-                public List<Record> execute(Transaction tx) {
+                public StatementResult execute(Transaction tx) {
                     StatementResult result = tx.run(query);
-                    return result.list();
+                    return result;
                 }
             });
+
+            return sr;
         }
     }
 }
