@@ -5,12 +5,7 @@
 
 package neo4jreplication;
 
-import org.neo4j.driver.internal.InternalEntity;
-import org.neo4j.driver.internal.util.Extract;
 import org.neo4j.driver.internal.util.Iterables;
-import org.neo4j.driver.internal.value.MapValue;
-import org.neo4j.driver.internal.value.RelationshipValue;
-import org.neo4j.driver.v1.Value;
 import org.neo4j.driver.v1.Values;
 import org.neo4j.driver.v1.types.Node;
 import org.neo4j.driver.v1.types.Relationship;
@@ -49,8 +44,7 @@ public class MyNodeRelation implements Serializable {
     public MyNodeRelation() {
 
     }
-
-
+    
     //Node
     public boolean isNode() {
         return isNode;
@@ -145,6 +139,7 @@ public class MyNodeRelation implements Serializable {
     public <T> Iterable<T> values(Function<Object, T> mapFunction) {
         return Iterables.map(this.properties.values(), mapFunction);
     }
+
     public Map<String, Object> asMap() {
         return this.properties;
     }
